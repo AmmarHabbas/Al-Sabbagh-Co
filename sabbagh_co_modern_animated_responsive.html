@@ -1,0 +1,1506 @@
+      <!-- Interactive UI + Scroll Motion System -->
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          /* ---------- Brand filtering ---------- */
+          const filterBtns = document.querySelectorAll('.brand-tab-btn');
+          const brandCards = document.querySelectorAll('.brand-card');
+
+          filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+              filterBtns.forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-on-primary');
+                b.classList.add('bg-sand-surface', 'text-on-surface-variant');
+              });
+
+              btn.classList.remove('bg-sand-surface', 'text-on-surface-variant');
+              btn.classList.add('active', 'bg-primary', 'text-on-primary');
+
+              const targetBrand = btn.getAttribute('data-brand');
+
+              brandCards.forEach((card, index) => {
+                const visible = targetBrand === 'all' ||
+                  card.getAttribute('data-brand-type') === targetBrand;
+
+                if (visible) {
+                  card.style.display = 'flex';
+                  card.style.opacity = '0';
+                  card.style.transform = 'translateY(18px)';
+                  requestAnimationFrame(() => {
+                    setTimeout(() => {
+                      card.style.opacity = '1';
+                      card.style.transform = 'translateY(0)';
+                    }, index * 70);
+                  });
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+          });
+
+          /* ---------- Scroll reveal ---------- */
+          const revealTargets = [
+            'main > div > section:not(:first-child)',
+            'footer',
+            '#about-section > div > div > *',
+            '#quality-section .grid > *',
+            '#signature-brands .brand-card',
+            '#distribution-section > div > div > *',
+            '#contact-section .relative.z-10 > div'
+          ];
+
+          revealTargets.forEach(selector => {
+            document.querySelectorAll(selector).forEach((el, index) => {
+              if (el.closest('.mobile-menu-panel')) return;
+              el.classList.add('scroll-reveal');
+
+              if (index % 4 === 1) el.classList.add('reveal-left');
+              if (index % 4 === 3) el.classList.add('reveal-right');
+            });
+          });
+
+          /* Section-level stagger groups */
+          document.querySelectorAll(
+            '#quality-section .grid, #signature-brands .grid, #distribution-section .space-y-space-sm'
+          ).forEach(group => group.classList.add('stagger-children'));
+
+          const prefersReducedMotion =
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+          if (!prefersReducedMotion && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries, obs) => {
+              entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                  entry.target.classList.add('is-visible');
+                  obs.unobserve(entry.target);
+                }
+              });
+            }, {
+              threshold: 0.12,
+              rootMargin: '0px 0px -60px 0px'
+            });
+
+            document.querySelectorAll('.scroll-reveal, .stagger-children').forEach(el => {
+              observer.observe(el);
+            });
+          } else {
+            document.querySelectorAll('.scroll-reveal, .stagger-children').forEach(el => {
+              el.classList.add('is-visible');
+            });
+          }
+
+          /* ---------- Hero entrance sequence ---------- */
+          const hero = document.querySelector('main > div > section:first-child');
+          if (hero) {
+            const heroParts = hero.querySelectorAll(
+              ':scope > div.relative.z-10 > div:first-child, ' +
+              ':scope > div.relative.z-10 h1, ' +
+              ':scope > div.relative.z-10 p, ' +
+              ':scope > div.relative.z-10 > div.mt-space-xl, ' +
+              ':scope > div.relative.z-10 > div.mt-space-3xl'
+            );
+
+            heroParts.forEach((el, index) => {
+              el.classList.add('hero-content-reveal');
+              if (index === 1) el.classList.add('delay-1');
+              if (index === 2) el.classList.add('delay-2');
+              if (index >= 3) el.classList.add('delay-3');
+            });
+
+            const heroBg = hero.querySelector('img');
+            if (heroBg) heroBg.classList.add('hero-bg');
+          }
+
+          /* ---------- Header motion ---------- */
+          const header = document.querySelector('header');
+
+          const updateHeader = () => {
+            if (!header) return;
+            header.classList.toggle('header-scrolled', window.scrollY > 18);
+          };
+
+          updateHeader();
+          window.addEventListener('scroll', updateHeader, { passive: true });
+
+          /* ---------- Mobile navigation ---------- */
+          const menuToggle = document.querySelector('.mobile-menu-toggle');
+          const mobileNav = document.getElementById('mobileNav');
+
+          const closeMobileMenu = () => {
+            if (!menuToggle || !mobileNav) return;
+            menuToggle.classList.remove('open');
+            mobileNav.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+          };
+
+          if (menuToggle && mobileNav) {
+            menuToggle.addEventListener('click', () => {
+              const open = !mobileNav.classList.contains('open');
+              menuToggle.classList.toggle('open', open);
+              mobileNav.classList.toggle('open', open);
+              menuToggle.setAttribute('aria-expanded', String(open));
+            });
+
+            mobileNav.querySelectorAll('a').forEach(link => {
+              link.addEventListener('click', closeMobileMenu);
+            });
+
+            window.addEventListener('resize', () => {
+              if (window.innerWidth >= 1280) closeMobileMenu();
+            });
+          }
+
+          /* ---------- Smooth anchor scrolling with fixed header ---------- */
+          document.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', event => {
+              const id = link.getAttribute('href');
+              if (!id || id === '#') return;
+
+              const target = document.querySelector(id);
+              if (!target) return;
+
+              event.preventDefault();
+              const headerHeight = header ? header.offsetHeight : 0;
+              const y = target.getBoundingClientRect().top + window.scrollY - headerHeight + 2;
+
+              window.scrollTo({
+                top: y,
+                behavior: prefersReducedMotion ? 'auto' : 'smooth'
+              });
+            });
+          });
+
+          /* ---------- Animated metric numbers ---------- */
+          const counters = document.querySelectorAll('.counter-value');
+          let countersAnimated = false;
+
+          const animateCounters = () => {
+            counters.forEach(counter => {
+              const target = Number(counter.getAttribute('data-target')) || 0;
+              const duration = 1300;
+              const startTime = performance.now();
+
+              const update = now => {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                counter.innerText = Math.floor(target * eased);
+
+                if (progress < 1) {
+                  requestAnimationFrame(update);
+                } else {
+                  counter.innerText = target;
+                }
+              };
+
+              requestAnimationFrame(update);
+            });
+          };
+
+          const metricsSection = document.querySelector('.counter-value')?.closest('section');
+
+          if (metricsSection && 'IntersectionObserver' in window) {
+            const counterObserver = new IntersectionObserver(entries => {
+              if (entries.some(entry => entry.isIntersecting) && !countersAnimated) {
+                countersAnimated = true;
+                animateCounters();
+                counterObserver.disconnect();
+              }
+            }, { threshold: 0.25 });
+
+            counterObserver.observe(metricsSection);
+          } else if (!countersAnimated) {
+            animateCounters();
+            countersAnimated = true;
+          }
+        });
+      </script><!DOCTYPE html>
+
+<html dir="rtl" lang="ar">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Sabbagh &amp; Co. Food Industries</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <style>
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  /* ===== Modern scroll / motion system ===== */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 88px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .scroll-reveal {
+    opacity: 0;
+    transform: translate3d(0, 42px, 0) scale(.985);
+    transition:
+      opacity .8s cubic-bezier(.22,1,.36,1),
+      transform .9s cubic-bezier(.22,1,.36,1);
+    will-change: opacity, transform;
+  }
+
+  .scroll-reveal.is-visible {
+    opacity: 1;
+    transform: translate3d(0,0,0) scale(1);
+  }
+
+  .reveal-left {
+    transform: translate3d(-48px, 0, 0);
+  }
+
+  .reveal-right {
+    transform: translate3d(48px, 0, 0);
+  }
+
+  .reveal-scale {
+    transform: translate3d(0, 28px, 0) scale(.92);
+  }
+
+  .stagger-children > * {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    transition:
+      opacity .65s cubic-bezier(.22,1,.36,1),
+      transform .7s cubic-bezier(.22,1,.36,1);
+  }
+
+  .stagger-children.is-visible > * {
+    opacity: 1;
+    transform: translate3d(0,0,0);
+  }
+
+  .stagger-children.is-visible > *:nth-child(1) { transition-delay: .05s; }
+  .stagger-children.is-visible > *:nth-child(2) { transition-delay: .12s; }
+  .stagger-children.is-visible > *:nth-child(3) { transition-delay: .19s; }
+  .stagger-children.is-visible > *:nth-child(4) { transition-delay: .26s; }
+  .stagger-children.is-visible > *:nth-child(5) { transition-delay: .33s; }
+  .stagger-children.is-visible > *:nth-child(6) { transition-delay: .40s; }
+
+  .hero-content-reveal {
+    opacity: 0;
+    transform: translate3d(0, 34px, 0);
+    animation: heroIn .95s cubic-bezier(.22,1,.36,1) .15s forwards;
+  }
+
+  .hero-content-reveal.delay-1 { animation-delay: .30s; }
+  .hero-content-reveal.delay-2 { animation-delay: .48s; }
+  .hero-content-reveal.delay-3 { animation-delay: .66s; }
+
+  .hero-bg {
+    animation: heroZoom 14s ease-out both;
+  }
+
+  @keyframes heroIn {
+    to { opacity: 1; transform: translate3d(0,0,0); }
+  }
+
+  @keyframes heroZoom {
+    from { transform: scale(1.08); }
+    to { transform: scale(1); }
+  }
+
+  .float-soft {
+    animation: floatSoft 6s ease-in-out infinite;
+  }
+
+  @keyframes floatSoft {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .header-scrolled {
+    box-shadow: 0 10px 35px rgba(16,59,43,.10) !important;
+    background: rgba(251,249,246,.97) !important;
+  }
+
+  .mobile-menu-panel {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-height .45s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+  }
+
+  .mobile-menu-panel.open {
+    max-height: 520px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-menu-link {
+    transform: translateX(12px);
+    opacity: 0;
+    transition: opacity .3s ease, transform .35s cubic-bezier(.22,1,.36,1);
+  }
+
+  .mobile-menu-panel.open .mobile-menu-link {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(2) { transition-delay: .04s; }
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(3) { transition-delay: .08s; }
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(4) { transition-delay: .12s; }
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(5) { transition-delay: .16s; }
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(6) { transition-delay: .20s; }
+  .mobile-menu-panel.open .mobile-menu-link:nth-child(7) { transition-delay: .24s; }
+
+  .mobile-menu-toggle .menu-icon,
+  .mobile-menu-toggle .close-icon {
+    transition: transform .3s ease, opacity .2s ease;
+  }
+
+  .mobile-menu-toggle .close-icon {
+    position: absolute;
+    opacity: 0;
+    transform: rotate(-90deg) scale(.7);
+  }
+
+  .mobile-menu-toggle.open .menu-icon {
+    opacity: 0;
+    transform: rotate(90deg) scale(.7);
+  }
+
+  .mobile-menu-toggle.open .close-icon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+
+  .brand-card,
+  section [class*="shadow-sm"],
+  section [class*="shadow-md"] {
+    backface-visibility: hidden;
+  }
+
+  .brand-card {
+    transition: transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s ease !important;
+  }
+
+  .brand-card:hover {
+    transform: translateY(-8px);
+  }
+
+  .interactive-lift {
+    transition: transform .4s cubic-bezier(.22,1,.36,1), box-shadow .4s ease;
+  }
+
+  .interactive-lift:hover {
+    transform: translateY(-5px);
+  }
+
+  @media (max-width: 1279px) {
+    header > div:first-child {
+      min-height: 72px;
+    }
+
+    header .mobile-only-menu {
+      display: flex;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    header .mobile-only-menu {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    html {
+      scroll-padding-top: 76px;
+    }
+
+    .hero-content-reveal {
+      animation-duration: .75s;
+    }
+
+    .scroll-reveal {
+      transform: translate3d(0, 26px, 0) scale(.99);
+      transition-duration: .7s;
+    }
+
+    .reveal-left,
+    .reveal-right {
+      transform: translate3d(0, 26px, 0);
+    }
+
+    .stagger-children > * {
+      transform: translate3d(0, 18px, 0);
+    }
+
+    /* Prevent oversized decorative elements from creating horizontal scroll */
+    .mobile-safe-overflow {
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    /* Better mobile touch targets */
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-menu-panel {
+      max-height: 0;
+    }
+
+    .mobile-menu-panel.open {
+      max-height: 620px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    .scroll-reveal,
+    .stagger-children > * {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>
+
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-primary": "#9ed2b5", "surface-container-highest": "#e4e2df", "primary": "#002c1b", "on-secondary-fixed-variant": "#0e5138", "charcoal-text": "#1A201C", "on-background": "#1b1c1a", "inverse-surface": "#30312f", "primary-fixed-dim": "#9ed2b5", "tertiary-fixed-dim": "#eebf6b", "surface-container": "#efeeeb", "error": "#ba1a1a", "on-tertiary": "#ffffff", "background": "#fbf9f6", "forest-deep": "#103B2B", "primary-container": "#0f432e", "sand-surface": "#F4F0EA", "outline-variant": "#c0c9c1", "on-secondary-container": "#316e52", "surface-bright": "#fbf9f6", "tertiary-fixed": "#ffdea7", "on-error": "#ffffff", "surface-tint": "#376850", "on-primary-fixed-variant": "#1e4f3a", "surface": "#fbf9f6", "surface-container-lowest": "#ffffff", "on-primary-fixed": "#002113", "on-tertiary-fixed-variant": "#5e4200", "primary-fixed": "#baeed0", "error-container": "#ffdad6", "on-surface-variant": "#414943", "tertiary": "#332200", "surface-container-low": "#f5f3f0", "secondary-container": "#aeeecb", "on-tertiary-container": "#c99e4d", "on-secondary": "#ffffff", "on-primary-container": "#7db094", "surface-dim": "#dbdad7", "inverse-on-surface": "#f2f0ed", "secondary-fixed-dim": "#95d4b3", "on-error-container": "#93000a", "on-secondary-fixed": "#002114", "secondary-fixed": "#b1f0ce", "wheat-gold": "#D4AF37", "border-subtle": "#E5DFD5", "secondary": "#2c694e", "outline": "#717973", "on-primary": "#ffffff", "tertiary-container": "#4e3600", "leaf-vibrant": "#388E3C", "on-tertiary-fixed": "#271900", "surface-card": "#FFFFFF", "surface-container-high": "#eae8e5", "on-surface": "#1b1c1a", "surface-variant": "#e4e2df" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.5rem", "space-xl": "2rem", "space-4xl": "6rem", "space-lg": "1.5rem", "space-sm": "0.75rem", "gutter-desktop": "2rem", "gutter-mobile": "1rem", "space-md": "1rem", "container-max": "80rem", "space-2xl": "3rem", "space-2xs": "0.25rem", "space-3xl": "4rem" }, "fontFamily": { "label-lg": ["DM Sans"], "body-lg": ["DM Sans"], "display-hero-mobile": ["Noto Serif"], "display-hero": ["Noto Serif"], "headline-xl": ["Noto Serif"], "caption": ["DM Sans"], "label-md": ["DM Sans"], "body-md": ["DM Sans"], "subheading-lg": ["DM Sans"], "subheading-md": ["DM Sans"], "body-sm": ["DM Sans"], "headline-lg": ["Noto Serif"], "headline-xl-mobile": ["Noto Serif"], "headline-sm": ["Noto Serif"], "headline-md": ["Noto Serif"] }, "fontSize": { "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.04em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "display-hero-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-hero": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "subheading-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }], "subheading-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "500" }], "headline-xl-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "500" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "500" }] } } } };</script>
+</head>
+
+<body class="bg-surface font-body-md text-on-surface antialiased">
+  <header
+    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-surface/95 backdrop-blur-md shadow-[0_4px_20px_-2px_rgba(26,32,28,0.05)]">
+    <div
+      class="h-20 max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop flex items-center justify-between gap-space-md">
+      <div class="flex items-center gap-space-md"><a class="flex items-center gap-space-sm group" data-path="home"
+          href="#"><img alt="Sabbagh &amp; Co. Food Industries"
+            class="h-12 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+            src="https://lh3.googleusercontent.com/aida/AEtjO1ULYdolOye6ZIUXoPDPYJc2wSyiyu_Jb1iEvrvFyBUsGuzbNUM3ab-hTXzdtcXaH5IUVy3qPvuvyyzOa3_FLfYIuPcuESHKgRnF9e1kBGz1J5cqEq2T7oq8egerSzCvtg25uhMw4xqK11MRvmFH-QxJYmWj04q96gk0wQ_q89LIFVTSjmefjbxi9Haw-plPYWb5CsxIgHX9dpwCrMxwxGLIC4wY-ND0Y762xB4ZUbfTk44Z3kbBtFYY1JunNQK6X23Mxudxrhhusw" />
+          <div class="hidden sm:flex flex-col text-right"><span
+              class="font-headline-sm text-headline-sm text-primary leading-tight font-bold">صباغ و شركاه</span><span
+              class="font-label-md text-caption text-secondary tracking-wider">FOOD INDUSTRIES</span></div>
+        </a></div>
+      <nav class="hidden xl:flex items-center gap-space-lg"
+        data-active-classes="text-primary font-bold border-b-2 border-wheat-gold"><a aria-current="page"
+          class="transition-colors py-space-2xs text-primary font-bold border-b-2 border-wheat-gold" data-path="home"
+          href="#">الرئيسية</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="about-us" href="#">عن الشركة</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="quality-standards" href="#">الجودة والتصنيع</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="our-brands" href="#">علاماتنا التجارية</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="products-catalog" href="#">منتجاتنا</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="distribution" href="#">شبكة التوزيع</a><a
+          class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors py-space-2xs"
+          data-path="contact-us" href="#">اتصل بنا</a></nav>
+      <div class="flex items-center gap-space-md">
+        <div class="flex items-center bg-sand-surface p-1 rounded-full text-on-surface-variant"><button
+            class="px-space-xs py-0.5 rounded-full font-label-md text-label-md bg-surface text-primary shadow-[0_1px_4px_rgba(0,0,0,0.05)]"
+            type="button">العربية</button><button
+            class="px-space-xs py-0.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors"
+            type="button">EN</button></div><a
+          class="hidden sm:inline-flex items-center gap-space-xs px-space-md py-2.5 rounded bg-primary-container text-on-primary font-label-lg text-label-lg shadow-[0_0_0_1px_#D4AF37_inset] hover:bg-primary transition-all"
+          data-path="contact-us" href="#"><span>اتصل بنا</span><span class="text-wheat-gold font-body-sm text-caption">/
+            Contact</span></a>
+        
+      </div>
+    </div>
+    <div id="mobileNav" class="mobile-menu-panel xl:hidden bg-surface border-t border-border-subtle">
+      <nav class="max-w-container-max mx-auto px-gutter-mobile py-3 flex flex-col text-right">
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-primary border-b border-border-subtle/70" href="#">الرئيسية</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-border-subtle/70" href="#about-section">عن الشركة</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-border-subtle/70" href="#quality-section">الجودة والتصنيع</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-border-subtle/70" href="#signature-brands">علاماتنا التجارية</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-border-subtle/70" href="#signature-brands">منتجاتنا</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-border-subtle/70" href="#distribution-section">شبكة التوزيع</a>
+        <a class="mobile-menu-link py-3 font-label-lg text-label-lg text-on-surface-variant" href="#contact-section">اتصل بنا</a>
+      </nav>
+    </div>
+  </header>
+  <main class="w-full pt-20 bg-background min-h-screen">
+    <div class="flex flex-col w-full">
+      <!-- Hero Section -->
+      <section class="relative w-full overflow-hidden bg-forest-deep text-on-primary">
+        <div class="absolute inset-0 z-0">
+          <img alt="حقول الطماطم الخصبة"
+            class="w-full h-full object-cover opacity-25 scale-105 transform motion-safe:transition-transform motion-safe:duration-1000"
+            src="https://lh3.googleusercontent.com/aida/AEtjO1WSHe6-k9dEcTr086RPTt8F1x2lOuCXcLQ6TLTAhxqXfKLkk1IihVWvlQ82X7Nwh5K3IqtIcyiZ-rt88J4qwG6h_uVbQMicoB6WniQhZ8O8Viv_I3-X0aHS7Smr2Z6k3aJujwDdO3GEd16tiO0EICTljzf0OvRdCH3iJe-kQ6gkALtsXHXZMoH8i-47DxVP2zHTMlJRWWrGFtTnAuH9kuEgx-SpmNfuHZugtM52VFd7U5zbbvobwffAmSc" />
+          <div class="absolute inset-0 bg-gradient-to-t from-forest-deep via-forest-deep/80 to-transparent"></div>
+          <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-wheat-gold/10 blur-3xl pointer-events-none">
+          </div>
+          <div
+            class="absolute top-1/2 right-0 w-80 h-80 rounded-full bg-secondary-container/10 blur-2xl pointer-events-none">
+          </div>
+        </div>
+        <div
+          class="relative z-10 max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop pt-space-3xl pb-space-4xl flex flex-col items-start text-right">
+          <div
+            class="inline-flex items-center gap-space-xs px-space-md py-1.5 rounded-full bg-surface-container-lowest/10 backdrop-blur-md text-wheat-gold mb-space-lg shadow-sm">
+            <span class="material-symbols-outlined text-subheading-md text-wheat-gold">eco</span>
+            <span class="font-label-lg text-label-lg tracking-wider">Good Food .. Good Life</span>
+            <span class="text-surface-variant font-caption text-caption">|</span>
+            <span class="font-caption text-caption text-surface-container-highest">طعام طيب .. حياة طيبة</span>
+          </div>
+          <div class="max-w-4xl space-y-space-md">
+            <h1
+              class="font-display-hero text-headline-xl lg:text-display-hero font-bold tracking-tight text-surface-container-lowest leading-tight">
+              صناعة غذائية متطورة <br class="hidden sm:inline" />
+              <span class="text-wheat-gold">برؤية عريقة</span> ومواصفات عالمية
+            </h1>
+            <p class="font-body-lg text-body-lg text-surface-container-high leading-relaxed max-w-2xl font-light">
+              منذ أكثر من ثلاثة عقود، تصنع شركة صباغ و شركاه أجود المنتجات الغذائية اعتماداً على محاصيل الأراضي السورية
+              الخصبة وأحدث خطوط الإنتاج والتعقيم الأوروبية لترسيخ معايير الثقة على كل مائدة.
+            </p>
+          </div>
+          <!-- Action Buttons -->
+          <div class="mt-space-xl flex flex-wrap items-center gap-space-md">
+            <a class="inline-flex items-center gap-space-sm px-space-lg py-3.5 rounded bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary transition-all duration-200"
+              href="#signature-brands">
+              <span>استكشف منتجاتنا</span>
+              <span class="material-symbols-outlined text-subheading-md text-wheat-gold">arrow_back</span>
+            </a>
+            <a class="inline-flex items-center gap-space-sm px-space-lg py-3.5 rounded bg-surface-container-lowest/15 hover:bg-surface-container-lowest/25 text-surface font-label-lg text-label-lg backdrop-blur-sm transition-all duration-200"
+              href="#about-section">
+              <span>قصتنا وخبراتنا</span>
+              <span class="material-symbols-outlined text-subheading-md">menu_book</span>
+            </a>
+          </div>
+          <!-- Hero Trust Markers -->
+          <div class="mt-space-3xl w-full grid grid-cols-1 sm:grid-cols-3 gap-space-md">
+            <div
+              class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest/10 backdrop-blur-md shadow-sm">
+              <div
+                class="w-12 h-12 rounded-full bg-wheat-gold/20 flex items-center justify-center text-wheat-gold shrink-0">
+                <span class="material-symbols-outlined text-headline-md">verified_user</span>
+              </div>
+              <div class="flex flex-col text-right">
+                <span class="font-headline-sm text-subheading-lg font-bold text-surface">BS EN ISO 9001:2000</span>
+                <span class="font-caption text-caption text-surface-container-high">Lloyd's Register البريطانية</span>
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest/10 backdrop-blur-md shadow-sm">
+              <div
+                class="w-12 h-12 rounded-full bg-wheat-gold/20 flex items-center justify-center text-wheat-gold shrink-0">
+                <span class="material-symbols-outlined text-headline-md">history_edu</span>
+              </div>
+              <div class="flex flex-col text-right">
+                <span class="font-headline-sm text-subheading-lg font-bold text-surface">منذ عام 1990</span>
+                <span class="font-caption text-caption text-surface-container-high">أكثر من 30 عاماً من الريادة
+                  الغذائية</span>
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest/10 backdrop-blur-md shadow-sm">
+              <div
+                class="w-12 h-12 rounded-full bg-wheat-gold/20 flex items-center justify-center text-wheat-gold shrink-0">
+                <span class="material-symbols-outlined text-headline-md">precision_manufacturing</span>
+              </div>
+              <div class="flex flex-col text-right">
+                <span class="font-headline-sm text-subheading-lg font-bold text-surface">تقنيات أوربية</span>
+                <span class="font-caption text-caption text-surface-container-high">تجهيزات Manzini و Impianti</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Interactive Live Metrics Ribbon -->
+      <section class="w-full bg-sand-surface py-space-xl">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-space-lg text-center">
+            <div
+              class="interactive-lift flex flex-col items-center justify-center p-space-md rounded-lg bg-surface-card shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-baseline gap-1 text-primary">
+                <span class="font-display-hero text-headline-xl font-bold tracking-tight text-primary counter-value"
+                  data-target="30">30</span>
+                <span class="font-headline-md text-headline-sm text-wheat-gold font-bold">+</span>
+              </div>
+              <p class="font-subheading-md text-subheading-md text-on-surface-variant font-semibold mt-1">عاماً من
+                الخبرة والريادة</p>
+              <span class="font-caption text-caption text-outline mt-0.5">تاريخ متجذر في دمشق</span>
+            </div>
+            <div
+              class="interactive-lift flex flex-col items-center justify-center p-space-md rounded-lg bg-surface-card shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-baseline gap-1 text-primary">
+                <span class="font-display-hero text-headline-xl font-bold tracking-tight text-primary counter-value"
+                  data-target="4">4</span>
+              </div>
+              <p class="font-subheading-md text-subheading-md text-on-surface-variant font-semibold mt-1">علامات تجارية
+                معتمدة</p>
+              <span class="font-caption text-caption text-outline mt-0.5">أمادورا، التل الأخضر، دوليز، روتانا</span>
+            </div>
+            <div
+              class="interactive-lift flex flex-col items-center justify-center p-space-md rounded-lg bg-surface-card shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-baseline gap-1 text-primary">
+                <span class="font-display-hero text-headline-xl font-bold tracking-tight text-primary counter-value"
+                  data-target="24">24</span>
+                <span class="font-headline-md text-headline-sm text-wheat-gold font-bold">+</span>
+              </div>
+              <p class="font-subheading-md text-subheading-md text-on-surface-variant font-semibold mt-1">صنفاً غذائياً
+                متخصصاً</p>
+              <span class="font-caption text-caption text-outline mt-0.5">صلصات، كتشب، معلبات فاخرة</span>
+            </div>
+            <div
+              class="interactive-lift flex flex-col items-center justify-center p-space-md rounded-lg bg-surface-card shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-baseline gap-1 text-primary">
+                <span class="font-display-hero text-headline-xl font-bold tracking-tight text-primary counter-value"
+                  data-target="100">100</span>
+                <span class="font-headline-md text-headline-sm text-wheat-gold font-bold">%</span>
+              </div>
+              <p class="font-subheading-md text-subheading-md text-on-surface-variant font-semibold mt-1">رقابة مخبرية
+                صارمة</p>
+              <span class="font-caption text-caption text-outline mt-0.5">مطابقة لأرقى المعايير الصحية</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Editorial Company Story (Asymmetric Bento layout) -->
+      <section class="w-full py-space-3xl lg:py-space-4xl bg-surface" id="about-section">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+            <!-- Left Content (7 Cols) -->
+            <div class="lg:col-span-7 space-y-space-lg text-right">
+              <div
+                class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded bg-secondary-container/40 text-on-secondary-fixed-variant font-label-md text-label-md">
+                <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                <span>تاريخ عريق ومستقبل صناعي واعد</span>
+              </div>
+              <h2 class="font-headline-xl text-headline-lg lg:text-headline-xl text-primary font-bold leading-snug">
+                أكثر من مجرد غذاء..<br />
+                <span class="text-secondary">التزام عائلي وصناعي بالجودة والريادة</span>
+              </h2>
+              <div class="space-y-space-md text-on-surface-variant font-body-md text-body-md leading-relaxed">
+                <p>
+                  تأسست شركة <strong class="text-primary font-semibold">صباغ و شركاه</strong> كصرح صناعي رائد في سورية
+                  بهدف إرساء نموذج استثنائي في مجال الصناعات التحويلية والغذائية. يعود تاريخ نشاط الشركة وخبراتها
+                  المتوارثة إلى مطلع التسعينات، لتتوج رسمياً بتطوير مجمعات صناعية عملاقة في ريف دمشق.
+                </p>
+                <p>
+                  نحن نؤمن بأن الغذاء الطيب هو أساس الحياة الطيبة (<em
+                    class="text-secondary font-subheading-md font-serif">Good Food .. Good Life</em>). لذا نحرص على
+                  انتقاء المحاصيل الطبيعية الطازجة من مواسم الحصاد السورية الخصبة، وتمريرها عبر منظومات تعقيم وتعبئة
+                  آلية متقدمة دون أي تدخل يدوي، لنضمن لكل مستهلك أعلى نقاء ومذاقاً طبيعياً متوازناً.
+                </p>
+              </div>
+              <!-- Accreditations row -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md pt-space-sm">
+                <div class="p-space-md rounded-lg bg-surface-container-low shadow-sm flex items-start gap-space-sm">
+                  <span class="material-symbols-outlined text-primary text-headline-sm mt-0.5">award_star</span>
+                  <div>
+                    <h4 class="font-headline-sm text-subheading-md font-bold text-primary">شهادة الأيزو العالمية</h4>
+                    <p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+                      حائزون على اعتماد المواصفة الدولية BS EN ISO 9001:2000 الممنوحة من هيئة Lloyd's Register
+                      البريطانية لإدارة الجودة الشاملة.
+                    </p>
+                  </div>
+                </div>
+                <div class="p-space-md rounded-lg bg-surface-container-low shadow-sm flex items-start gap-space-sm">
+                  <span class="material-symbols-outlined text-primary text-headline-sm mt-0.5">science</span>
+                  <div>
+                    <h4 class="font-headline-sm text-subheading-md font-bold text-primary">مختبرات تخصصية دقيقة</h4>
+                    <p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+                      فحص فيزيائي، كيميائي، وجرثومي دقيق على مدار الساعة لكل دفعة إنتاج قبل الاعتماد والتعبئة النهائية.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Right Visual Showcase (5 Cols) -->
+            <div class="lg:col-span-5 relative">
+              <div class="relative z-10 rounded-xl overflow-hidden shadow-xl bg-surface-card">
+                <img alt="صباغ و شركاه - طعام طيب لحياة طيبة" class="w-full h-72 sm:h-80 object-cover"
+                  src="https://lh3.googleusercontent.com/aida/AEtjO1V1VMt93E6hKerz-9frNT30GN1vB4op5WlV3mIOaiVXz2upHS3jZOdR0YwwaP8uYJtG0d7LiwAvQit7AHezzrZyVJ-xxPnI-28jR7BU1ojMjYqxLFeKpUJRlaAqUKzEgH_VCcV6Awe0sOEOTgDDVsGZETXHm0NfUeN4a-c7Xw379TPT0adwtU8YGJwDd_2G3rQc17Fh4w2d_mh7qDklr6IApI8WNX2gL0K4FHMAzoIW-W2w3doa7y5kZ0E" />
+                <div class="p-space-lg bg-sand-surface text-right">
+                  <span class="font-label-md text-label-md text-wheat-gold block">شعارنا الراسخ</span>
+                  <h3 class="font-headline-md text-headline-sm text-primary font-bold mt-1">طعام طيب .. حياة طيبة</h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
+                    مذاق عائلي يدخل كل منزل بشغف وسلامة وصحة متناهية، لنصنع معاً أوقاتاً شهية تدوم في الذاكرة.
+                  </p>
+                </div>
+              </div>
+              <!-- Secondary Image Accent Layer -->
+              <div
+                class="hidden sm:block absolute -bottom-10 -left-6 z-20 w-48 h-48 rounded-xl overflow-hidden shadow-2xl bg-surface-card ring-4 ring-surface">
+                <img alt="عناقيد الطماطم الطبيعية" class="w-full h-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida/AEtjO1WrBCMSVpQJhbhHBPxk8yvr3d14DUI3Tt2Z8-6gy-BkHXQ9pGwr2tiJnzzLykAIwuNH40dYzuL1gCD86ToF_jqMqtWkbjbOVE5KcJlH1z816octuvUth6NM2QJnJZGrSZL57cOWnYU8fmQG1gWjRHpcS03oxbd1nzk601GkzamuEExloVMSVUH2Q7HpH9cfuQu-7xRpiwEHQXc67cVBgDdy5gQKH1XgkK7wwJOBxtkITFupA5536y5VERE" />
+              </div>
+              <div class="absolute -top-6 -right-6 w-36 h-36 rounded-full bg-secondary-container/30 -z-10 blur-xl">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- European Engineering & Quality Process -->
+      <section id="quality-section" class="w-full py-space-3xl lg:py-space-4xl bg-sand-surface">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div class="flex flex-col md:flex-row md:items-end justify-between mb-space-2xl text-right gap-space-md">
+            <div class="max-w-2xl">
+              <div class="inline-flex items-center gap-space-xs text-secondary font-label-md text-label-md mb-space-xs">
+                <span class="material-symbols-outlined text-subheading-md">precision_manufacturing</span>
+                <span>هندسة التصنيع المتطورة</span>
+              </div>
+              <h2 class="font-headline-xl text-headline-lg lg:text-headline-xl text-primary font-bold">
+                جودة فائقة مدعومة بأرقى خطوط الإنتاج الإيطالية
+              </h2>
+            </div>
+            <p class="font-body-md text-body-md text-on-surface-variant max-w-md">
+              تعتمد منشآت صباغ و شركاه على خطوط إنتاج آلية متكاملة تضمن أقصى درجات العقامة والسلامة الغذائية دون أي لمس
+              يدوي.
+            </p>
+          </div>
+          <!-- Process Mosaic -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+            <!-- Step 1 -->
+            <div
+              class="p-space-xl rounded-xl bg-surface-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between text-right">
+              <div>
+                <div
+                  class="w-12 h-12 rounded-lg bg-sand-surface flex items-center justify-center text-primary font-bold text-headline-sm mb-space-lg shadow-sm">
+                  01
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-space-xs">انتقاء المحاصيل الطازجة
+                </h3>
+                <p class="font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  حصاد أجود الثمار الطبيعية من بساتين سورية الغنية، ومطابقة كل شحنة لفحوصات النضج ومستوى الحموضة
+                  ومتبقيات المبيدات.
+                </p>
+              </div>
+              <div
+                class="mt-space-lg pt-space-md flex items-center gap-space-xs text-secondary font-label-md text-label-md">
+                <span class="material-symbols-outlined text-subheading-md">nest_eco_leaf</span>
+                <span>100% مكونات نقية ومختارة</span>
+              </div>
+            </div>
+            <!-- Step 2 -->
+            <div
+              class="p-space-xl rounded-xl bg-forest-deep text-on-primary shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-right relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-wheat-gold/10 blur-xl"></div>
+              <div class="relative z-10">
+                <div
+                  class="w-12 h-12 rounded-lg bg-primary-container text-wheat-gold flex items-center justify-center font-bold text-headline-sm mb-space-lg shadow-sm">
+                  02
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-surface font-bold mb-space-xs">أحدث التكنولوجيا
+                  الإيطالية</h3>
+                <p class="font-body-md text-body-sm text-surface-container-high leading-relaxed">
+                  تجهيزات صناعية من كبريات الشركات العالمية:
+                  <span class="block mt-2 font-semibold text-wheat-gold">sig Manzini s.p.a.</span>
+                  <span class="block font-semibold text-wheat-gold">comical impianti s.r.l.</span>
+                  بمعايير تعقيم وتكثيف حراري مغلق يحفظ النكهة والقيمة الغذائية.
+                </p>
+              </div>
+              <div
+                class="relative z-10 mt-space-lg pt-space-md flex items-center gap-space-xs text-wheat-gold font-label-md text-label-md">
+                <span class="material-symbols-outlined text-subheading-md">verified</span>
+                <span>تصنيع آلي مؤتمت بالكامل</span>
+              </div>
+            </div>
+            <!-- Step 3 -->
+            <div
+              class="p-space-xl rounded-xl bg-surface-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between text-right">
+              <div>
+                <div
+                  class="w-12 h-12 rounded-lg bg-sand-surface flex items-center justify-center text-primary font-bold text-headline-sm mb-space-lg shadow-sm">
+                  03
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-space-xs">التعبئة والرقابة
+                  المخبرية</h3>
+                <p class="font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  تغليف فائق الدقة بعبوات آمنة صحياً، وإخضاع عينات دورية لبروتوكول الفحص المخبري والتحليل الميكروبيولوجي
+                  لضمان صلاحية مديدة وطعم لا يضاهى.
+                </p>
+              </div>
+              <div
+                class="mt-space-lg pt-space-md flex items-center gap-space-xs text-secondary font-label-md text-label-md">
+                <span class="material-symbols-outlined text-subheading-md">biotech</span>
+                <span>معايير ISO 9001:2000 الصارمة</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Signature Brands Showcase -->
+      <section class="w-full py-space-3xl lg:py-space-4xl bg-surface" id="signature-brands">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div class="text-center max-w-3xl mx-auto mb-space-3xl">
+            <div
+              class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-wheat-gold/15 text-forest-deep font-label-md text-label-md mb-space-sm">
+              <span class="material-symbols-outlined text-subheading-md text-wheat-gold">stars</span>
+              <span>علامات تجارية تحظى بثقة الملايين</span>
+            </div>
+            <h2 class="font-headline-xl text-headline-lg lg:text-headline-xl text-primary font-bold">
+              باقة علاماتنا التجارية الرائدة
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
+              تغطي عائلة منتجات صباغ و شركاه تشكيلة شاملة تلبي احتياجات الأسرة والمطابخ العصرية بأعلى مستويات النكهة
+              والجودة الغذائية.
+            </p>
+            <!-- Dynamic Brand Filter Pill Nav -->
+            <div class="flex flex-wrap items-center justify-center gap-space-xs mt-space-xl"
+              id="brand-filter-container">
+              <button
+                class="brand-tab-btn active px-space-md py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary shadow-sm transition-all"
+                data-brand="all" type="button">كافة العلامات</button>
+              <button
+                class="brand-tab-btn px-space-md py-2 rounded-full font-label-md text-label-md bg-sand-surface text-on-surface-variant hover:text-primary transition-all"
+                data-brand="amadora" type="button">أمادورا (Amadora)</button>
+              <button
+                class="brand-tab-btn px-space-md py-2 rounded-full font-label-md text-label-md bg-sand-surface text-on-surface-variant hover:text-primary transition-all"
+                data-brand="tal" type="button">التل الأخضر (Al-Tal)</button>
+              <button
+                class="brand-tab-btn px-space-md py-2 rounded-full font-label-md text-label-md bg-sand-surface text-on-surface-variant hover:text-primary transition-all"
+                data-brand="dollys" type="button">دوليز (Dolly's)</button>
+              <button
+                class="brand-tab-btn px-space-md py-2 rounded-full font-label-md text-label-md bg-sand-surface text-on-surface-variant hover:text-primary transition-all"
+                data-brand="rotana" type="button">روتانا (Rotana)</button>
+            </div>
+          </div>
+          <!-- Brands Cards Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg">
+            <!-- Brand 1: Amadora -->
+            <div
+              class="brand-card group p-space-lg rounded-xl bg-surface-card shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-right"
+              data-brand-type="amadora">
+              <div>
+                <div
+                  class="relative w-full h-64 sm:h-72 rounded-lg bg-surface-container-low overflow-hidden flex items-center justify-center p-space-md mb-space-md">
+                  <div
+                    class="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-on-primary font-caption text-caption font-bold">
+                    أمادورا | Amadora
+                  </div>
+                  <img alt="أمادورا صلصة الشواء والكاتشب"
+                    class="h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1UR-s2GC6pDExyy5snNqFYvtparMQAa404EVIwO-yLi4o1GiWgMos9Ux4D_WGXhWkOZ4mtY5G9Qg5gjvl8FbeQSb6AGJTmn3iUMyp2VFSxM1HIGAsCJReO6vOud-EpL3ut3qhWZBKRhrNC9VKNxDEKWTNucI2Vs8BO8_epFAHfAUZcEa6beDXBALFYbN6Q-R8Mlr8jY2220vm8_bWqEpm2A-KtiNYjIZsYQQ7Zonwgzmvengdx6h4Dvcos" />
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-1">أمادورا (Amadora)</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-space-sm">
+                  العلامة المفضلة لمحبي المذاقات الغنية: الكتشب الفاخر، صلصة الشواء، الصلصة الحارة جداً، وصلصة البيتزا
+                  المتخصصة.
+                </p>
+                <div class="flex flex-wrap gap-1 mb-space-md">
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">كتشب
+                    طبيعي</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">صلصة
+                    شواء BBQ</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">صلصة
+                    بيتزا</span>
+                </div>
+              </div>
+              <div class="pt-space-sm flex items-center justify-between">
+                <span class="font-caption text-caption text-secondary font-semibold">المواصفة السورية المعتمدة</span>
+                <div
+                  class="w-8 h-8 rounded-full bg-sand-surface flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-body-md">arrow_back</span>
+                </div>
+              </div>
+            </div>
+            <!-- Brand 2: Al-Tal Al-Akhdar -->
+            <div
+              class="brand-card group p-space-lg rounded-xl bg-surface-card shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-right"
+              data-brand-type="tal">
+              <div>
+                <div
+                  class="relative w-full h-64 sm:h-72 rounded-lg bg-surface-container-low overflow-hidden flex items-center justify-center p-space-md mb-space-md">
+                  <div
+                    class="absolute top-3 right-3 px-2 py-0.5 rounded bg-secondary text-on-secondary font-caption text-caption font-bold">
+                    التل الأخضر | Al-Tal
+                  </div>
+                  <img alt="التل الأخضر دبس رمان طبيعي"
+                    class="h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1XMOuOsYx1_7IdWzE0uniW858jCSrV9imLHxAkoHlsj4O5lCzIPoyIwKnA5pO41duTmVFqbztNbW8oBhEtVdDGD6CIQQy2jXbW32gQTJSm1SdQT61RWgAAaCIBEoimsQQBTcHUttPP-E4ucDEhBS9trPL56kW0nmXmrP1OSvGxYJ0kno1aBLR7mNamlmT1Re-MwwvkDLR601xoJ1eKOXQae3n8sjGZT3nwVyOkLSLmmoottQlW7LE0rhik" />
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-1">التل الأخضر</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-space-sm">
+                  أصالة ونقاء المطبخ الشرقي: دبس الرمان الطبيعي المركز، الصلصة الحارة، معجون الطماطم، فطر مقطع، ومسقعة
+                  الباذنجان.
+                </p>
+                <div class="flex flex-wrap gap-1 mb-space-md">
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">دبس
+                    رمان نقي</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">معجون
+                    طماطم</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">فطر
+                    معلب</span>
+                </div>
+              </div>
+              <div class="pt-space-sm flex items-center justify-between">
+                <span class="font-caption text-caption text-secondary font-semibold">100% طبيعي وخالٍ من الإضافات</span>
+                <div
+                  class="w-8 h-8 rounded-full bg-sand-surface flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-body-md">arrow_back</span>
+                </div>
+              </div>
+            </div>
+            <!-- Brand 3: Dolly's -->
+            <div
+              class="brand-card group p-space-lg rounded-xl bg-surface-card shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-right"
+              data-brand-type="dollys">
+              <div>
+                <div
+                  class="relative w-full h-64 sm:h-72 rounded-lg bg-surface-container-low overflow-hidden flex items-center justify-center p-space-md mb-space-md">
+                  <div
+                    class="absolute top-3 right-3 px-2 py-0.5 rounded bg-wheat-gold text-forest-deep font-caption text-caption font-bold">
+                    دوليز | Dolly's
+                  </div>
+                  <img alt="دوليز صلصة البيتزا والصلصات العائلية"
+                    class="h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1X_NJd0XK-Mq-J5hMA5TIDSKhihDnzXvH9o2NuM2x2yWiU-68BAtSVIPCuHrk7MK0ooORRz0-gQ7qWmM4BJSYqjB4L4MTFX-RJtZqwM6nVUsE7dqzsGRPpYcSW1nktoB_r96AmNzqJ3qskjKESNmwfO7gENdvwyL1_fy2k2OX6HhwAJX2qrVHHrf00vHQuCc3yOoRm6V4XX1OTdCAZfxguFw0YQkJpDYvbYEk_6mgh9TkNYPw2jSfmsyMQ" />
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-1">دوليز (Dolly's)</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-space-sm">
+                  التشكيلة المتنوعة للأسرة والمطاعم: صلصة البيتزا الجاهزة، الكتشب، دبس الرمان، وأظرف الصلصات المتخصصة
+                  بأعلى درجات العقامة.
+                </p>
+                <div class="flex flex-wrap gap-1 mb-space-md">
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">صلصة
+                    بيتزا</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">أحجام
+                    عائلية وتجارية</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">صلصات
+                    حارة</span>
+                </div>
+              </div>
+              <div class="pt-space-sm flex items-center justify-between">
+                <span class="font-caption text-caption text-secondary font-semibold">حلول متكاملة للمطاعم
+                  والمنازل</span>
+                <div
+                  class="w-8 h-8 rounded-full bg-sand-surface flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-body-md">arrow_back</span>
+                </div>
+              </div>
+            </div>
+            <!-- Brand 4: Rotana -->
+            <div
+              class="brand-card group p-space-lg rounded-xl bg-surface-card shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-right"
+              data-brand-type="rotana">
+              <div>
+                <div
+                  class="relative w-full h-64 sm:h-72 rounded-lg bg-surface-container-low overflow-hidden flex items-center justify-center p-space-md mb-space-md">
+                  <div
+                    class="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary-container text-on-primary font-caption text-caption font-bold">
+                    روتانا | Rotana
+                  </div>
+                  <img alt="روتانا فطر مقطع وحبة كاملة"
+                    class="h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1WTTIPoFgKqP5Hx6HiBtjyBPedjtmb8j8_u4SfOObQJoMk_kSux4tpxI781DFYcL_9k4PfFTCHZ11eghXFQ00Sd7wM9gIuwhjJ2h7SjJrC1cbjLTMLM7GZWBQuyquPmVQuk95_0QQT_vbzfTC7PVNmDG3IWFqqA81tcL1Cqk1CxqigcsodOATTWPGGytLy8h6UFyKO0UZwj_7J1PCRjB4VisKUHdcUao8L_4r_r97CHi3KFKIGBKwTfm0w" />
+                </div>
+                <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-1">روتانا (Rotana)</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-space-sm">
+                  التميز في عالم المأكولات المحفوظة: الفطر المقطع والحبة الكاملة، شرائح الزيتون الفاخرة، صلصة اللحوم
+                  الشهية ومعجون الطماطم.
+                </p>
+                <div class="flex flex-wrap gap-1 mb-space-md">
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">فطر
+                    حبة كاملة</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">زيتون
+                    مقطع</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-caption font-caption bg-sand-surface text-on-surface-variant">صلصة
+                    لحوم Meat Sauce</span>
+                </div>
+              </div>
+              <div class="pt-space-sm flex items-center justify-between">
+                <span class="font-caption text-caption text-secondary font-semibold">نقاء ونضارة محفوظة بعناية</span>
+                <div
+                  class="w-8 h-8 rounded-full bg-sand-surface flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-body-md">arrow_back</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Featured Product Carousel / Highlight Strip -->
+          <div class="mt-space-3xl p-space-xl rounded-2xl bg-sand-surface">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-space-lg">
+              <div class="text-right space-y-space-xs max-w-xl">
+                <span class="text-wheat-gold font-label-md text-label-md block font-bold">أحدث تشكيلة لعام 2025</span>
+                <h3 class="font-headline-md text-headline-md text-primary font-bold">معرض المنتجات الأكثر طلباً في
+                  الأسواق</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                  تصفح التشكيلة الكاملة لعبوات الكتشب، صلصة الشواء، والصلصات الحارة المصممة لمطابخ الذواقة وتجار
+                  التجزئة.
+                </p>
+              </div>
+              <div class="flex items-center gap-space-sm">
+                <div class="w-20 h-24 rounded-lg bg-surface-card p-1 shadow-sm flex items-center justify-center">
+                  <img alt="أمادورا صلصة حارة" class="h-full w-auto object-contain"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1VL9-Z-iSM9hqrv5SXnzbdijGv3Dp8BnkMMWPE-SKLWqGM_bRulcnV5liqMrZJ_ivbdozb9IggO47ZA6zWvJQzhYk3D1nCtzWIUjuuqRFGrqWWAiG8RlBQBanePFrv_H7ZLxxht_eK0Azpqe-St_TSyzy5SNg_FBa4Vt-MBu32S-nHWjT-uldTEboX9ItLRVamI1wvmZX6tuAtjAIUVUXeLpWxb_ykmRLDXbeyymNozfx5uyrUHmg_qDg" />
+                </div>
+                <div class="w-20 h-24 rounded-lg bg-surface-card p-1 shadow-sm flex items-center justify-center">
+                  <img alt="دوليز صلصة حارة" class="h-full w-auto object-contain"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1UgTYvmxa8qvAZRvN2GFgO7TZX02zOeVI5jD4VGAZO6Hv2Uz-8RcVcc7UnBJ7Wdm1EJoOq2rgt0krfu0TnTShhF-9fZJNsHodyjeWmW63Iji6Qcnm9fOQpKhShfyHh2ply17ZWQpl4pq_xaeZi_Pc0X_10PVTfYpzb-HiUZh5VncMS8cjDvzi6m-zIkcE3iVWUfTNHi1z6-XQslh-qxFSpAEYrQAwPlHdpGDwaop3CoSb3kMXgFmT815g" />
+                </div>
+                <div class="w-20 h-24 rounded-lg bg-surface-card p-1 shadow-sm flex items-center justify-center">
+                  <img alt="دوليز صلصة شواء" class="h-full w-auto object-contain"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1XjB1O5c0ABYlIp_ktx2UTtzVB3SSTA89wwwYxtIXE1HgcQ-h1fFHRUSuPUEAlYGgFBWhbrieTDYreBrseT-EYh76ilzCNlJ7_vN3VhIngJ_GnoylBsHe0A0Qu_x3VkJ3T0-vK3dFkVm9s8e1B3G_oUlEhtR07p1SJBM6vqH-9KfWBQpNJXQqQZ9M52tG69qhW2EiKP3aXlSLpQLhDU70omnrdMu3ZVTlXc5xotCBIJZURal9tIiHCMjL8" />
+                </div>
+                <div class="w-20 h-24 rounded-lg bg-surface-card p-1 shadow-sm flex items-center justify-center">
+                  <img alt="روتانا زيتون مقطع" class="h-full w-auto object-contain"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1VyBbfXIw4mKDICeXlhnm6JjbvYa-ENHnlY84kYO18Ce_iLaB33ggyv8BehjK3iM5B0mjjRXp4us7m26goMN4Vm_y6geRNQRAkR-K4ZfcksKUlpDQJbVKLIsZiWrR5fPy_sOGqY1so9-3aAfy_nnotSwpjgOl-Vd6P1ZAYCceXA4RAPrKTqNv6ozdxWTGnsBF6h3TVdCmzQgx0X9tVtud5OCENc6Tq3UwXZcUwYBToZbV9FpF0tKZpEn_k" />
+                </div>
+                <div class="w-20 h-24 rounded-lg bg-surface-card p-1 shadow-sm flex items-center justify-center">
+                  <img alt="روتانا صلصة لحوم" class="h-full w-auto object-contain"
+                    src="https://lh3.googleusercontent.com/aida/AEtjO1XSPd-M43No00pmrLLWCYppHf9mbQXWY90n0dJWioIswx3kp0ptwts5lC-GqNHUT73qpZD7mfMESocF3q4PKcnI0vpwOaccYRW_mChIsIjnNKZgyYq7QyMJRzgwdF4CUU0aL57L-y6GcENBHl9Z1nANDBVenJeXuQt9_UKY7FKpq_abDJFgQQtBgJf8XCePmHMCEAJ5-b_i5KsleAIediayn0JqQkROCCfqj3MgIR6Hl0DwIaVvXpKh5A" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Distribution & Modern Supply Chain Section -->
+      <section id="distribution-section" class="w-full py-space-3xl lg:py-space-4xl bg-surface-container-low">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+            <!-- Text details -->
+            <div class="lg:col-span-6 space-y-space-lg text-right">
+              <div class="inline-flex items-center gap-space-xs text-secondary font-label-md text-label-md">
+                <span class="material-symbols-outlined text-subheading-md">local_shipping</span>
+                <span>شبكة توزيع لوجستية متطورة</span>
+              </div>
+              <h2 class="font-headline-xl text-headline-lg lg:text-headline-xl text-primary font-bold leading-snug">
+                من خطوط الإنتاج الحديثة إلى كافة نقاط البيع والأسواق
+              </h2>
+              <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                يتم تشغيل شبكة التوزيع في شركة الصباغ من قبل كوادر متخصصة ذات كفاءة وفعالية عالية تحت إشراف حريص من
+                قيادة العمل الميداني، لضمان تواجد المنتجات الدائم والمستمر ضمن كافة نقاط البيع، والمراكز التجارية،
+                ومنافذ التجزئة والجملة في مختلف المحافظات السورية والأسواق الإقليمية.
+              </p>
+              <div class="space-y-space-sm pt-space-xs">
+                <div class="flex items-center gap-space-sm text-right">
+                  <div
+                    class="w-8 h-8 rounded-full bg-secondary-container/40 flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-subheading-md">check</span>
+                  </div>
+                  <span class="font-subheading-md text-subheading-md text-primary font-semibold">أسطول مجهز ومكيف يحافظ
+                    على سلاسل التبريد والتخزين السليم</span>
+                </div>
+                <div class="flex items-center gap-space-sm text-right">
+                  <div
+                    class="w-8 h-8 rounded-full bg-secondary-container/40 flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-subheading-md">check</span>
+                  </div>
+                  <span class="font-subheading-md text-subheading-md text-primary font-semibold">تغطية شاملة لقطاعات
+                    التجزئة، الفنادق والمطاعم (HoReCa)</span>
+                </div>
+                <div class="flex items-center gap-space-sm text-right">
+                  <div
+                    class="w-8 h-8 rounded-full bg-secondary-container/40 flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-subheading-md">check</span>
+                  </div>
+                  <span class="font-subheading-md text-subheading-md text-primary font-semibold">جهوزية عالية لخدمة
+                    طلبيات التصدير الإقليمي والدولي</span>
+                </div>
+              </div>
+              <div class="pt-space-md">
+                <a class="inline-flex items-center gap-space-sm px-space-lg py-3 rounded bg-primary text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-forest-deep transition-all"
+                  href="#contact-section">
+                  <span>طلب وكالة أو استفسار تجاري</span>
+                  <span class="material-symbols-outlined text-subheading-md text-wheat-gold">storefront</span>
+                </a>
+              </div>
+            </div>
+            <!-- Interactive Hub Graphic / Visual Map -->
+            <div class="lg:col-span-6">
+              <div class="p-space-xl rounded-2xl bg-surface-card shadow-md text-right relative overflow-hidden">
+                <div class="flex items-center justify-between mb-space-lg">
+                  <div
+                    class="flex items-center gap-space-xs text-primary font-bold font-headline-sm text-subheading-lg">
+                    <span class="material-symbols-outlined text-secondary">hub</span>
+                    <span>المقر الرئيسي ومراكز التوزيع</span>
+                  </div>
+                  <span
+                    class="px-2.5 py-1 rounded-full bg-sand-surface font-caption text-caption text-wheat-gold font-bold">ريف
+                    دمشق - سوريا</span>
+                </div>
+                <!-- Regional Map Representation via data-location container -->
+                <div
+                  class="w-full h-72 rounded-xl bg-cover bg-center relative overflow-hidden flex items-end p-space-md"
+                  data-alt="Aerial view of fertile Syrian agricultural countryside and modern industrial food processing distribution complex in Damascus rural area bathed in golden natural sunlight"
+                  data-location="Damascus, Syria"
+                  style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBXXMR1fwdx0aX-m5PMh1HD-9RTQMLL9-IY_j_gKOxubKwVNsaOhdd_8tqaklC6oOlfFXc0LdNbAn9FkppMnCPXNEyMv9U2R98x0MjhzK4f4aho1zZVP5t1szqufco2iX7ElNaGo9EwIRG7pQmeQUPD2QUJ8SxQN5H6q64hJo0zhK75Qgus-gvsl6Dv2be6gKiB7Wh117Yju6B20jrZVlY0THJaiFU1LmYRkdKDo0SdvCnE2FdVN0Cb')">
+                  <div class="w-full p-space-md rounded-lg bg-surface/90 backdrop-blur-md text-right shadow-md">
+                    <div class="flex items-center justify-between">
+                      <div class="flex flex-col">
+                        <span class="font-label-md text-label-md text-primary font-bold">الإدارة العامة والمصانع
+                          المركزية</span>
+                        <span class="font-caption text-caption text-on-surface-variant">ريف دمشق - الجمهورية العربية
+                          السورية</span>
+                      </div>
+                      <a class="font-headline-sm text-subheading-md text-wheat-gold font-bold hover:underline" dir="ltr"
+                        href="tel:+963119202">
+                        +963 11 9202
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <!-- Logistics Specs Row -->
+                <div class="grid grid-cols-3 gap-space-sm mt-space-md text-center">
+                  <div class="p-space-sm rounded bg-sand-surface">
+                    <span class="block font-headline-sm text-subheading-lg font-bold text-primary">14+</span>
+                    <span class="font-caption text-caption text-on-surface-variant">محافظة ومنطقة</span>
+                  </div>
+                  <div class="p-space-sm rounded bg-sand-surface">
+                    <span class="block font-headline-sm text-subheading-lg font-bold text-primary">24/7</span>
+                    <span class="font-caption text-caption text-on-surface-variant">إشراف لوجستي</span>
+                  </div>
+                  <div class="p-space-sm rounded bg-sand-surface">
+                    <span class="block font-headline-sm text-subheading-lg font-bold text-primary">100%</span>
+                    <span class="font-caption text-caption text-on-surface-variant">ضمان التوافر</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Interactive Contact & Commercial Inquiry Section -->
+      <section class="w-full py-space-3xl lg:py-space-4xl bg-surface" id="contact-section">
+        <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop">
+          <div
+            class="p-space-lg sm:p-space-xl lg:p-space-3xl rounded-2xl sm:rounded-3xl bg-forest-deep text-on-primary shadow-2xl relative overflow-hidden">
+            <div
+              class="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-wheat-gold/10 blur-3xl pointer-events-none">
+            </div>
+            <div
+              class="absolute top-0 right-0 w-96 h-96 rounded-full bg-primary-container/30 blur-2xl pointer-events-none">
+            </div>
+            <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-space-2xl">
+              <!-- Text and Contact details -->
+              <div class="lg:col-span-5 space-y-space-lg text-right">
+                <div class="inline-flex items-center gap-space-xs text-wheat-gold font-label-md text-label-md">
+                  <span class="material-symbols-outlined text-subheading-md">contact_support</span>
+                  <span>تواصل مع قسم المبيعات والتصدير</span>
+                </div>
+                <h2 class="font-headline-xl text-headline-lg lg:text-headline-xl text-surface font-bold leading-tight">
+                  نسعد بشراكتكم وتزويدكم بأجود المنتجات الغذائية
+                </h2>
+                <p class="font-body-md text-body-md text-surface-container-high leading-relaxed">
+                  سواء كنتم وكيلاً تجارياً، صاحب منشأة غذائية، أو تبحثون عن تصنيع بعلامات خاصة، فريقنا جاهز للتنسيق
+                  وتقديم العروض التنافسية.
+                </p>
+                <div class="space-y-space-md pt-space-sm">
+                  <div class="flex items-center gap-space-md">
+                    <div
+                      class="w-10 h-10 rounded-full bg-surface-container-lowest/10 flex items-center justify-center text-wheat-gold shrink-0">
+                      <span class="material-symbols-outlined">phone_in_talk</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                      <span class="font-caption text-caption text-surface-container-highest">الاتصال الهاتفي
+                        المباشر</span>
+                      <a class="font-subheading-lg text-subheading-lg font-bold text-surface hover:text-wheat-gold transition-colors"
+                        dir="ltr" href="tel:+963119202">+963 11 9202</a>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-space-md">
+                    <div
+                      class="w-10 h-10 rounded-full bg-surface-container-lowest/10 flex items-center justify-center text-wheat-gold shrink-0">
+                      <span class="material-symbols-outlined">location_on</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                      <span class="font-caption text-caption text-surface-container-highest">المقر والمنشآت
+                        الصناعية</span>
+                      <span class="font-subheading-md text-subheading-md text-surface">ريف دمشق - الجمهورية العربية
+                        السورية</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-space-md">
+                    <div
+                      class="w-10 h-10 rounded-full bg-surface-container-lowest/10 flex items-center justify-center text-wheat-gold shrink-0">
+                      <span class="material-symbols-outlined">thumb_up</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                      <span class="font-caption text-caption text-surface-container-highest">تابعوا جديدنا على المنصات
+                        الرسمية</span>
+                      <a class="font-subheading-md text-subheading-md text-wheat-gold hover:underline"
+                        href="https://www.facebook.com/profile.php?id=61551731410931" rel="noopener noreferrer"
+                        target="_blank">
+                        صفحتنا الرسمية على فيسبوك Facebook
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Contact Form -->
+              <div class="lg:col-span-7">
+                <div class="p-space-xl rounded-2xl bg-surface-card text-charcoal-text shadow-xl text-right">
+                  <h3 class="font-headline-md text-headline-sm text-primary font-bold mb-space-xs">أرسل استفسارك التجاري
+                  </h3>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">سنقوم بالتواصل معكم خلال 24
+                    ساعة عمل عبر فريق العلاقات التجارية.</p>
+                  <form class="space-y-space-md" id="inquiryForm"
+                    onsubmit="event.preventDefault(); document.getElementById('formSuccess').classList.remove('hidden'); this.reset();">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                      <div>
+                        <label class="block font-label-md text-label-md text-primary font-semibold mb-1">الاسم الكامل /
+                          اسم الشركة *</label>
+                        <input
+                          class="w-full px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text placeholder:text-outline font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors"
+                          placeholder="مثال: شركة النور للتجارة" required="" type="text" />
+                      </div>
+                      <div>
+                        <label class="block font-label-md text-label-md text-primary font-semibold mb-1">البريد
+                          الإلكتروني *</label>
+                        <input
+                          class="w-full px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text placeholder:text-outline font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors text-right"
+                          dir="ltr" placeholder="name@company.com" required="" type="email" />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                      <div>
+                        <label class="block font-label-md text-label-md text-primary font-semibold mb-1">رقم الهاتف /
+                          واتساب *</label>
+                        <input
+                          class="w-full px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text placeholder:text-outline font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors text-right"
+                          dir="ltr" placeholder="+963 ..." required="" type="tel" />
+                      </div>
+                      <div>
+                        <label class="block font-label-md text-label-md text-primary font-semibold mb-1">نوع
+                          الطلب</label>
+                        <select
+                          class="w-full px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors">
+                          <option>طلب وكالة وتوزيع محلي</option>
+                          <option>طلبيات التصدير الخارجي</option>
+                          <option>توريد مطاعم وفنادق (HoReCa)</option>
+                          <option>استفسار عام عن المنتجات</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block font-label-md text-label-md text-primary font-semibold mb-1">الرسالة أو تفاصيل
+                        الطلب *</label>
+                      <textarea
+                        class="w-full px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text placeholder:text-outline font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors"
+                        placeholder="اذكر المنتجات المطلوبة، الكميات التقريبية، ومنطقة التوزيع المستهدفة..." required=""
+                        rows="3"></textarea>
+                    </div>
+                    <!-- Anti-spam math verification from reference text -->
+                    <div class="flex items-center gap-space-md">
+                      <div
+                        class="px-space-md py-2 rounded bg-sand-surface font-headline-sm text-subheading-md text-primary font-bold shrink-0">
+                        14 + 6 =
+                      </div>
+                      <input
+                        class="w-32 px-space-md py-2.5 rounded bg-sand-surface text-charcoal-text font-body-sm text-body-sm outline-none focus:bg-surface-card transition-colors"
+                        placeholder="الناتج؟" required="" type="number" />
+                    </div>
+                    <button
+                      class="w-full py-3.5 rounded bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-forest-deep transition-all duration-200 flex items-center justify-center gap-space-sm"
+                      type="submit">
+                      <span>إرسال الطلب</span>
+                      <span class="material-symbols-outlined text-subheading-md text-wheat-gold">send</span>
+                    </button>
+                    <div
+                      class="hidden p-space-md rounded bg-secondary-container text-on-secondary-container font-label-md text-label-md text-center"
+                      id="formSuccess">
+                      تم استلام رسالتكم بنجاح! سيقوم مسؤول التوزيع بالتواصل معكم في أقرب وقت.
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Interactive Script for Tab Filtering and Animated Counters -->
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          // Dynamic Filter for Brand Showcase Cards
+          const filterBtns = document.querySelectorAll('.brand-tab-btn');
+          const brandCards = document.querySelectorAll('.brand-card');
+
+          filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+              filterBtns.forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-on-primary');
+                b.classList.add('bg-sand-surface', 'text-on-surface-variant');
+              });
+
+              btn.classList.remove('bg-sand-surface', 'text-on-surface-variant');
+              btn.classList.add('active', 'bg-primary', 'text-on-primary');
+
+              const targetBrand = btn.getAttribute('data-brand');
+
+              brandCards.forEach(card => {
+                if (targetBrand === 'all' || card.getAttribute('data-brand-type') === targetBrand) {
+                  card.style.display = 'flex';
+                  card.style.opacity = '1';
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+          });
+
+          // Animated Metric Numbers
+          const counters = document.querySelectorAll('.counter-value');
+          let animated = false;
+
+          const animateCounters = () => {
+            counters.forEach(counter => {
+              const target = +counter.getAttribute('data-target');
+              let count = 0;
+              const speed = target / 25;
+              const update = () => {
+                count += speed;
+                if (count < target) {
+                  counter.innerText = Math.ceil(count);
+                  requestAnimationFrame(update);
+                } else {
+                  counter.innerText = target;
+                }
+              };
+              update();
+            });
+          };
+
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting && !animated) {
+                animateCounters();
+                animated = true;
+              }
+            });
+          }, { threshold: 0.2 });
+
+          const metricsSection = document.querySelector('.counter-value');
+          if (metricsSection) {
+            observer.observe(metricsSection.parentElement.parentElement);
+          }
+        });
+      </script>
+    </div>
+  </main>
+  <footer class="w-full bg-forest-deep text-surface text-right">
+    <div class="h-1.5 w-full bg-wheat-gold"></div>
+    <div class="max-w-container-max mx-auto px-gutter-mobile lg:px-gutter-desktop pt-space-3xl pb-space-2xl">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-xl">
+        <div class="space-y-space-md">
+          <div class="flex items-center gap-space-sm"><img alt="Sabbagh &amp; Co. Logo"
+              class="h-14 w-auto bg-surface-container-lowest p-1.5 rounded object-contain"
+              src="https://lh3.googleusercontent.com/aida/AEtjO1ULYdolOye6ZIUXoPDPYJc2wSyiyu_Jb1iEvrvFyBUsGuzbNUM3ab-hTXzdtcXaH5IUVy3qPvuvyyzOa3_FLfYIuPcuESHKgRnF9e1kBGz1J5cqEq2T7oq8egerSzCvtg25uhMw4xqK11MRvmFH-QxJYmWj04q96gk0wQ_q89LIFVTSjmefjbxi9Haw-plPYWb5CsxIgHX9dpwCrMxwxGLIC4wY-ND0Y762xB4ZUbfTk44Z3kbBtFYY1JunNQK6X23Mxudxrhhusw" />
+            <div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-surface font-semibold">صباغ و
+                شركاه</span><span class="font-label-md text-caption text-wheat-gold tracking-widest">FOOD
+                INDUSTRIES</span></div>
+          </div>
+          <p class="font-body-sm text-body-sm text-surface-container-highest leading-relaxed">شركة صباغ و شركاه هي شركة
+            سورية رائدة في الصناعات الغذائية، تأسست لتقديم أجود المنتجات الغذائية المصنعة بأحدث خطوط الإنتاج الأوروبية
+            ومعايير الجودة العالمية BS EN ISO 9001:2000.</p>
+          <div
+            class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded bg-primary-container/80 text-wheat-gold font-subheading-md text-subheading-md italic">
+            <span>Good Food .. Good Life</span></div>
+        </div>
+        <div class="space-y-space-md">
+          <h3 class="font-headline-sm text-headline-sm text-wheat-gold pb-space-xs">علاماتنا التجارية</h3>
+          <ul class="space-y-space-sm font-body-md text-body-md">
+            <li
+              class="flex items-center gap-space-xs text-surface-container-high hover:text-wheat-gold transition-colors">
+              <span class="w-1.5 h-1.5 rounded-full bg-wheat-gold"></span><a data-path="our-brands" href="#">التل الأخضر
+                (Al-Tal Al-Akhdar)</a></li>
+            <li
+              class="flex items-center gap-space-xs text-surface-container-high hover:text-wheat-gold transition-colors">
+              <span class="w-1.5 h-1.5 rounded-full bg-wheat-gold"></span><a data-path="our-brands" href="#">أمادورا
+                (Amadora)</a></li>
+            <li
+              class="flex items-center gap-space-xs text-surface-container-high hover:text-wheat-gold transition-colors">
+              <span class="w-1.5 h-1.5 rounded-full bg-wheat-gold"></span><a data-path="our-brands" href="#">روتانا
+                (Rotana)</a></li>
+            <li
+              class="flex items-center gap-space-xs text-surface-container-high hover:text-wheat-gold transition-colors">
+              <span class="w-1.5 h-1.5 rounded-full bg-wheat-gold"></span><a data-path="our-brands" href="#">دوليز
+                (Dolly's)</a></li>
+          </ul>
+        </div>
+        <div class="space-y-space-md">
+          <h3 class="font-headline-sm text-headline-sm text-wheat-gold pb-space-xs">معايير الجودة والتصنيع</h3>
+          <div class="p-space-md rounded bg-primary-container/60 space-y-space-sm">
+            <div class="flex items-center gap-space-xs text-wheat-gold font-label-lg text-label-lg"><span
+                class="material-symbols-outlined">verified</span><span>اعتماد الجودة الدولي</span></div>
+            <p class="font-body-sm text-caption text-surface-container-high leading-normal">BS EN ISO 9001:2000
+              Certified Quality Management Systems</p><span
+              class="font-body-sm text-caption text-surface-container-highest block">أعلى ضوابط السلامة الصحية ومراقبة
+              الجودة المخبرية من الحقل حتى العبوة.</span>
+          </div>
+        </div>
+        <div class="space-y-space-md">
+          <h3 class="font-headline-sm text-headline-sm text-wheat-gold pb-space-xs">المقر والتواصل</h3>
+          <div class="space-y-space-sm font-body-sm text-body-sm text-surface-container-high">
+            <div class="flex items-start gap-space-xs"><span
+                class="material-symbols-outlined text-wheat-gold text-subheading-lg">location_on</span><span>ريف دمشق -
+                الجمهورية العربية السورية</span></div>
+            <div class="flex items-center gap-space-xs"><span
+                class="material-symbols-outlined text-wheat-gold text-subheading-lg">call</span><span
+                class="font-body-md text-body-md" dir="ltr">+963 11 9202</span></div>
+            <div class="flex items-center gap-space-xs"><span
+                class="material-symbols-outlined text-wheat-gold text-subheading-lg">public</span><a
+                class="hover:text-wheat-gold transition-colors" href="#">صفحتنا الرسمية على فيسبوك</a></div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="mt-space-2xl pt-space-md flex flex-col md:flex-row items-center justify-between gap-space-sm font-caption text-caption text-surface-container-high/80">
+        <p>© شركة صباغ و شركاه للصناعات الغذائية. جميع الحقوق محفوظة.</p>
+        <p dir="ltr">© Sabbagh &amp; Co. Food Industries. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
